@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="toi@entreprise.com"
                   required
-                  style={{ width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 14, outline: "none", background: "white", boxSizing: "border-box" }}
+                  style={{ width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 14, outline: "none", background: "white", color: "#0f172a", boxSizing: "border-box" }}
                 />
               </div>
 
