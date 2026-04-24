@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { db } from "@/lib/db";
 import { users, organizations, organizationMembers } from "@/lib/schema";
 import { eq } from "drizzle-orm";
+import { sendWelcomeEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -24,7 +25,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Nom de l'entreprise requis" }, { status: 400 });
     }
 
-    // Crée user row si pas existe (trigger devrait le faire, mais on sécurise)
     let [userRow] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
     if (!userRow) {
       [userRow] = await db
@@ -37,12 +37,10 @@ export async function POST(req: Request) {
         .returning();
     }
 
-    // Si il a déjà une org par défaut, on le laisse passer
     if (userRow.defaultOrgId) {
       return NextResponse.json({ ok: true, orgId: userRow.defaultOrgId, existing: true });
     }
 
-    // Crée l'organisation
     const [org] = await db
       .insert(organizations)
       .values({
@@ -55,15 +53,22 @@ export async function POST(req: Request) {
       })
       .returning();
 
-    // Lie user → org en tant qu'owner
     await db.insert(organizationMembers).values({
       orgId: org.id,
       userId: user.id,
       role: "owner",
     });
 
-    // Set defaultOrgId
     await db.update(users).set({ defaultOrgId: org.id }).where(eq(users.id, user.id));
+
+    // Envoi email bienvenue (non bloquant)
+    if (user.email) {
+      sendWelcomeEmail({
+        to: user.email,
+        firstName: (user.user_metadata?.full_name as string)?.split(" ")[0],
+        orgName: org.name,
+      }).catch((e) => console.error("[onboarding] welcome email failed:", e));
+    }
 
     return NextResponse.json({ ok: true, orgId: org.id });
   } catch (err) {

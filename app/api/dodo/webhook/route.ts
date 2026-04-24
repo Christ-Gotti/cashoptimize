@@ -3,12 +3,13 @@ import crypto from "crypto";
 import { db } from "@/lib/db";
 import { organizations } from "@/lib/schema";
 import { eq } from "drizzle-orm";
+import { sendPaymentReceivedEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
 function verifySignature(body: string, headers: Headers): boolean {
   const secret = process.env.DODO_WEBHOOK_SECRET;
-  if (!secret) return true; // pas de secret → on skip la vérif (dev)
+  if (!secret) return true;
 
   const signature = headers.get("webhook-signature");
   const webhookId = headers.get("webhook-id");
@@ -34,7 +35,7 @@ type DodoEvent = {
     object?: {
       id?: string;
       status?: string;
-      customer?: { email?: string };
+      customer?: { email?: string; name?: string };
       metadata?: { org_id?: string; user_id?: string };
     };
   };
@@ -51,24 +52,32 @@ export async function POST(req: Request) {
 
     const event = JSON.parse(body) as DodoEvent;
     const orgId = event.data?.object?.metadata?.org_id;
+    const customerEmail = event.data?.object?.customer?.email;
+    const customerName = event.data?.object?.customer?.name;
 
     console.log(`[dodo/webhook] ${event.type}`, { orgId, status: event.data?.object?.status });
 
-    if (!orgId) {
-      return NextResponse.json({ received: true, note: "No org_id in metadata" });
-    }
-
     const t = event.type;
+    const activatedEvents = ["subscription.created", "subscription.active", "subscription.renewed", "payment.succeeded"];
 
-    if (t === "subscription.created" || t === "subscription.active" || t === "subscription.renewed" || t === "payment.succeeded") {
+    if (activatedEvents.includes(t) && orgId) {
       await db.update(organizations)
         .set({ plan: "starter", updatedAt: new Date() })
         .where(eq(organizations.id, orgId));
-    } else if (t === "subscription.canceled" || t === "subscription.failed") {
+
+      // Email paiement reçu (non bloquant)
+      if (customerEmail) {
+        sendPaymentReceivedEmail({
+          to: customerEmail,
+          firstName: customerName?.split(" ")[0],
+          amount: 19,
+        }).catch((e) => console.error("[dodo/webhook] payment email failed:", e));
+      }
+    } else if ((t === "subscription.canceled" || t === "subscription.failed") && orgId) {
       await db.update(organizations)
         .set({ plan: "canceled", updatedAt: new Date() })
         .where(eq(organizations.id, orgId));
-    } else if (t === "subscription.on_hold" || t === "subscription.expired" || t === "payment.failed") {
+    } else if ((t === "subscription.on_hold" || t === "subscription.expired" || t === "payment.failed") && orgId) {
       await db.update(organizations)
         .set({ plan: "trial", updatedAt: new Date() })
         .where(eq(organizations.id, orgId));
