@@ -1,4 +1,4 @@
-// app/banks/page.tsx
+// app/banks/page.tsxexport const dynamic = "force-dynamic";
 "use client";
 
 import { useEffect, useState } from "react";
