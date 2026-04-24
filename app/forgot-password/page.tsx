@@ -2,90 +2,243 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-const GRADIENT = "linear-gradient(135deg, #6366f1, #8b5cf6 60%, #ec4899)";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 export default function ForgotPasswordPage() {
+  const supabase = createSupabaseBrowser();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ tone: "info" | "success" | "warning"; text: string } | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  /**
+   * Traduit les messages Supabase en français, sans jamais révéler
+   * si l'email existe ou non (best practice sécurité).
+   */
+  function friendlyMessage(err: string): { tone: "warning" | "info"; text: string } {
+    const msg = err.toLowerCase();
+
+    if (msg.includes("email rate limit") || msg.includes("rate limit")) {
+      return {
+        tone: "info",
+        text: "Tu as déjà fait une demande récemment. Patiente quelques minutes avant de réessayer.",
+      };
+    }
+    if (msg.includes("invalid") && msg.includes("email")) {
+      return { tone: "warning", text: "Cette adresse email n'a pas un format valide." };
+    }
+    if (msg.includes("recovery") || msg.includes("smtp") || msg.includes("sending")) {
+      return {
+        tone: "info",
+        text: "On n'a pas pu envoyer l'email pour l'instant. Réessaie dans quelques minutes, ou contacte le support si le souci persiste.",
+      };
+    }
+    return {
+      tone: "info",
+      text: "Une erreur temporaire est survenue. Réessaie dans un instant.",
+    };
+  }
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!email) return;
+
     setLoading(true);
-    setError(null);
+    setNotice(null);
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
+
+    setLoading(false);
+
     if (error) {
-      setError(error.message);
-      setLoading(false);
+      setNotice(friendlyMessage(error.message));
       return;
     }
-    setSent(true);
-    setLoading(false);
+
+    // Toujours afficher un message de succès générique (sécurité)
+    setNotice({
+      tone: "success",
+      text: "Si un compte est associé à cette adresse, un lien de réinitialisation vient d'être envoyé. Vérifie ta boîte mail (et tes spams).",
+    });
   }
 
+  // Palette douce : jamais de rouge pour ce genre d'écran
+  const toneStyles = {
+    info: {
+      background: "#eff6ff",
+      borderColor: "#bfdbfe",
+      color: "#1e3a8a",
+    },
+    success: {
+      background: "#ecfdf5",
+      borderColor: "#a7f3d0",
+      color: "#065f46",
+    },
+    warning: {
+      background: "#fffbeb",
+      borderColor: "#fde68a",
+      color: "#78350f",
+    },
+  };
+
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "#f8fafc", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div style={{ width: "100%", maxWidth: 420, background: "white", borderRadius: 20, padding: 40, boxShadow: "0 4px 30px rgba(15,23,42,0.06)" }}>
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <div style={{ display: "inline-flex", width: 48, height: 48, borderRadius: 12, background: GRADIENT, alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>🔑</div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, color: "#0f172a" }}>Mot de passe oublié ?</h1>
-          <p style={{ fontSize: 14, color: "#64748b", marginTop: 8 }}>
-            Pas de souci, on t&apos;envoie un lien pour le réinitialiser.
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#f8fafc",
+        padding: "24px",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "440px",
+          background: "white",
+          borderRadius: "20px",
+          border: "1px solid #e2e8f0",
+          padding: "40px 32px",
+          boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
+        }}
+      >
+        <div style={{ textAlign: "center", marginBottom: "24px" }}>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "64px",
+              height: "64px",
+              borderRadius: "18px",
+              background: "linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)",
+              fontSize: "28px",
+              marginBottom: "16px",
+            }}
+          >
+            🔑
+          </div>
+          <h1 style={{ fontSize: "26px", fontWeight: 800, color: "#0f172a", margin: 0 }}>
+            Mot de passe oublié ?
+          </h1>
+          <p style={{ color: "#64748b", fontSize: "14px", marginTop: "8px", marginBottom: 0 }}>
+            Pas de souci, on t'envoie un lien pour le réinitialiser.
           </p>
         </div>
 
-        {sent ? (
-          <div style={{ textAlign: "center", padding: "20px 0" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📬</div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Check ta boîte mail</h3>
-            <p style={{ fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
-              On a envoyé un lien à <strong>{email}</strong>. Clique dessus pour définir un nouveau mot de passe.
-            </p>
-            <Link href="/login" style={{ display: "inline-block", marginTop: 20, color: "#6366f1", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-              ← Retour à la connexion
-            </Link>
+        <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div>
+            <label
+              htmlFor="email"
+              style={{
+                display: "block",
+                fontSize: "12px",
+                fontWeight: 700,
+                color: "#475569",
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                marginBottom: "8px",
+              }}
+            >
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="toi@entreprise.fr"
+              style={{
+                width: "100%",
+                padding: "14px 16px",
+                borderRadius: "12px",
+                border: "1px solid #e2e8f0",
+                fontSize: "15px",
+                color: "#0f172a",
+                background: "white",
+                outline: "none",
+                transition: "border-color 150ms, box-shadow 150ms",
+                boxSizing: "border-box",
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = "#a5b4fc";
+                e.currentTarget.style.boxShadow = "0 0 0 4px rgba(99, 102, 241, 0.1)";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = "#e2e8f0";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            />
           </div>
-        ) : (
-          <>
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="toi@entreprise.com"
-                  required
-                  style={{ width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 14, outline: "none", background: "white", color: "#0f172a", boxSizing: "border-box" }}
-                />
-              </div>
 
-              {error && <div style={{ padding: 10, borderRadius: 10, background: "#fee2e2", color: "#b91c1c", fontSize: 13 }}>{error}</div>}
-
-              <button
-                type="submit"
-                disabled={loading}
-                style={{ padding: "14px 16px", borderRadius: 12, border: "none", background: GRADIENT, color: "white", fontWeight: 700, fontSize: 15, cursor: "pointer", opacity: loading ? 0.6 : 1, boxShadow: "0 10px 30px rgba(99,102,241,0.3)" }}
-              >
-                {loading ? "Envoi…" : "Envoyer le lien →"}
-              </button>
-            </form>
-
-            <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid #f1f5f9", textAlign: "center", fontSize: 13, color: "#64748b" }}>
-              <Link href="/login" style={{ color: "#6366f1", fontWeight: 600, textDecoration: "none" }}>← Retour à la connexion</Link>
+          {notice && (
+            <div
+              style={{
+                padding: "12px 14px",
+                borderRadius: "12px",
+                border: `1px solid ${toneStyles[notice.tone].borderColor}`,
+                background: toneStyles[notice.tone].background,
+                color: toneStyles[notice.tone].color,
+                fontSize: "13.5px",
+                lineHeight: "1.5",
+              }}
+            >
+              {notice.text}
             </div>
-          </>
-        )}
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: "14px 16px",
+              borderRadius: "12px",
+              border: "none",
+              background: "linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)",
+              color: "white",
+              fontSize: "15px",
+              fontWeight: 700,
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.6 : 1,
+              transition: "opacity 150ms, transform 150ms",
+              boxShadow: "0 8px 24px rgba(99, 102, 241, 0.25)",
+            }}
+          >
+            {loading ? "Envoi en cours…" : "Envoyer le lien →"}
+          </button>
+        </form>
+
+        <div
+          style={{
+            marginTop: "24px",
+            paddingTop: "20px",
+            borderTop: "1px solid #f1f5f9",
+            textAlign: "center",
+          }}
+        >
+          <Link
+            href="/login"
+            style={{
+              color: "#6366f1",
+              fontSize: "14px",
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            ← Retour à la connexion
+          </Link>
+        </div>
+
+        <p style={{ textAlign: "center", color: "#94a3b8", fontSize: "12px", marginTop: "20px", marginBottom: 0 }}>
+          Besoin d'aide ? Écris-nous à{" "}
+          <a href="mailto:dopeweb.saas@gmail.com" style={{ color: "#6366f1", textDecoration: "none" }}>
+            dopeweb.saas@gmail.com
+          </a>
+        </p>
       </div>
     </div>
   );
