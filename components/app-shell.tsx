@@ -16,12 +16,14 @@ const NAV: Array<{ href: string; icon: string; label: string; soon?: boolean }> 
   { href: "/dashboard", icon: "📊", label: "Dashboard" },
   { href: "/pnl", icon: "📋", label: "Tableau P&L" },
   { href: "/import", icon: "✨", label: "Import intelligent", soon: true },
+  { href: "/chat", icon: "💬", label: "Assistant IA" },
   { href: "/engagements", icon: "🛣", label: "Engagements" },
   { href: "/scenarios", icon: "🧙", label: "Scénarios", soon: true },
   { href: "/alerts", icon: "🔔", label: "Alertes", soon: true },
   { href: "/banks", icon: "🏦", label: "Comptes bancaires" },
-  { href: "/pricing", icon: "🏷", label: "Tarifs", soon: true },
   { href: "/reports", icon: "📄", label: "Rapports", soon: true },
+  { href: "/referral", icon: "🎁", label: "Parrainage" },
+  { href: "/pricing", icon: "🏷", label: "Tarifs", soon: true },
 ];
 
 type UserInfo = { id: string; email: string; fullName: string | null };
