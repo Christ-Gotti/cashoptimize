@@ -65,6 +65,11 @@ export default function LoginPage() {
             <button type="submit" disabled={loading} style={{ ...S.button, opacity: loading ? 0.6 : 1 }}>
               {loading ? "Connexion…" : "Se connecter →"}
             </button>
+            <div style={{ textAlign: "center", marginTop: 4 }}>
+  <Link href="/forgot-password" style={{ fontSize: 12, color: "#6366f1", fontWeight: 500, textDecoration: "none" }}>
+    Mot de passe oublié ?
+  </Link>
+</div>
           </form>
 
           <div style={S.divider}>

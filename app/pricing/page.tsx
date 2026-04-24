@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SmartNav } from "./smart-nav";
 import { CheckoutButton } from "./checkout-button";
 
 const GRADIENT = "linear-gradient(135deg, #6366f1, #8b5cf6 60%, #ec4899)";
@@ -7,19 +8,7 @@ export default function PricingPage() {
   return (
     <main style={{ background: "#ffffff", color: "#0f172a", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       {/* NAV */}
-      <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(255,255,255,0.8)", backdropFilter: "blur(12px)", borderBottom: "1px solid #f1f5f9" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "#0f172a" }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: GRADIENT, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 16 }}>⚡</div>
-            <div style={{ fontWeight: 800, fontSize: 18 }}>CashOptimize</div>
-          </Link>
-          <div style={{ display: "flex", gap: 20, alignItems: "center", fontSize: 14 }}>
-            <Link href="/" style={{ color: "#475569", textDecoration: "none", fontWeight: 500 }}>Accueil</Link>
-            <Link href="/login" style={{ color: "#475569", textDecoration: "none", fontWeight: 500 }}>Connexion</Link>
-            <CheckoutButton style={{ ...BTN_PRIMARY, fontSize: 13, padding: "8px 16px" }}>Essai gratuit →</CheckoutButton>
-          </div>
-        </div>
-      </nav>
+      <SmartNav />
 
       {/* HERO */}
       <section style={{ padding: "80px 24px 40px", textAlign: "center", position: "relative", overflow: "hidden" }}>
