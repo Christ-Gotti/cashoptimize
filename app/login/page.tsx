@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
@@ -27,6 +27,22 @@ function LoginInner() {
   const [notice, setNotice] = useState<{ tone: "info" | "success" | "warning"; text: string } | null>(null);
 
   const nextPath = searchParams.get("next") || "/dashboard";
+
+  // Affiche les erreurs OAuth qui reviennent en URL (?error=oauth ou ?error=callback)
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error === "oauth") {
+      setNotice({
+        tone: "warning",
+        text: "Connexion Google échouée. Si tu as déjà un compte avec cette adresse en mot de passe, utilise plutôt le mot de passe pour te connecter.",
+      });
+    } else if (error === "callback") {
+      setNotice({
+        tone: "warning",
+        text: "Lien expiré ou invalide. Reconnecte-toi.",
+      });
+    }
+  }, [searchParams]);
 
   function friendlyError(msg: string): { tone: "warning" | "info"; text: string } {
     const m = msg.toLowerCase();
@@ -92,7 +108,13 @@ function LoginInner() {
           <p style={{ color: "#64748b", fontSize: 14, marginTop: 8, marginBottom: 0 }}>Connecte-toi pour piloter ta tréso.</p>
         </div>
 
-        {/* Bouton Google */}
+        {/* Affiche le notice avant tout au cas où il y a une erreur OAuth */}
+        {notice && (
+          <div style={{ marginBottom: 16, padding: "12px 14px", borderRadius: 12, border: `1px solid ${toneStyles[notice.tone].borderColor}`, background: toneStyles[notice.tone].background, color: toneStyles[notice.tone].color, fontSize: 13.5, lineHeight: 1.5 }}>
+            {notice.text}
+          </div>
+        )}
+
         <button onClick={loginWithGoogle} disabled={googleLoading} type="button" style={googleBtnStyle(googleLoading)}>
           <GoogleIcon />
           <span>{googleLoading ? "Connexion…" : "Continuer avec Google"}</span>
@@ -116,12 +138,6 @@ function LoginInner() {
             <Link href="/forgot-password" style={{ color: "#6366f1", fontSize: 12.5, fontWeight: 600, textDecoration: "none" }}>Mot de passe oublié ?</Link>
           </div>
 
-          {notice && (
-            <div style={{ padding: "12px 14px", borderRadius: 12, border: `1px solid ${toneStyles[notice.tone].borderColor}`, background: toneStyles[notice.tone].background, color: toneStyles[notice.tone].color, fontSize: 13.5, lineHeight: 1.5 }}>
-              {notice.text}
-            </div>
-          )}
-
           <button type="submit" disabled={loading} style={{ width: "100%", padding: "14px 16px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)", color: "white", fontSize: 15, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1, transition: "opacity 150ms", boxShadow: "0 8px 24px rgba(99, 102, 241, 0.25)" }}>
             {loading ? "Connexion…" : "Se connecter →"}
           </button>
@@ -135,6 +151,10 @@ function LoginInner() {
           <span style={{ fontSize: 14, color: "#64748b" }}>Pas encore de compte ? </span>
           <Link href="/signup" style={{ color: "#6366f1", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>Crée ton accès</Link>
         </div>
+
+        <p style={{ textAlign: "center", color: "#94a3b8", fontSize: 12, marginTop: 20, marginBottom: 0 }}>
+          Besoin d'aide ? <a href="mailto:dopeweb.saas@gmail.com?subject=Aide%20CashOptimize" style={{ color: "#6366f1", textDecoration: "none", fontWeight: 600 }}>Contactez-nous</a>
+        </p>
       </div>
     </div>
   );
