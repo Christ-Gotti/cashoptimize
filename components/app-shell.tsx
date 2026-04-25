@@ -62,8 +62,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     router.push("/login");
   }
 
-  const firstName = user?.fullName?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "…";
-  const initials = (user?.fullName ?? user?.email ?? "??").slice(0, 2).toUpperCase();
+  const initials = (() => {
+  const source = user?.fullName ?? user?.email ?? "";
+  const parts = source.replace(/@.*$/, "").split(/[\s._-]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return "•";
+})();
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#f7f8fc", fontFamily: "'Inter', system-ui, sans-serif", color: "#0f172a" }}>
@@ -106,7 +111,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, padding: 8, borderRadius: 12 }}>
             <div style={{ width: 36, height: 36, borderRadius: 999, background: GRADIENT, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800 }}>{initials}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{firstName}</div>
+            
               <div style={{ fontSize: 11, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{org?.name ?? "…"}</div>
             </div>
             <button onClick={signOut} title="Déconnexion" style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 16, padding: 4 }}>⎋</button>
