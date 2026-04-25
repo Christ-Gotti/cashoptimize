@@ -4,19 +4,45 @@ export const dynamic = "force-dynamic";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
     async function handleCallback() {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
+      const supabase = createSupabaseBrowser();
 
-      // Supabase met les tokens dans le hash : #access_token=xxx&refresh_token=yyy
+      // Cas 1 : OAuth (Google) → code dans les query params
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          console.error("[auth/callback] OAuth exchange error:", error);
+          router.replace("/login?error=oauth");
+          return;
+        }
+
+        // Si un ref code traîne en localStorage et que le user n'en a pas, on le sauve
+        try {
+          const storedRef = localStorage.getItem("cashopt_ref");
+          if (storedRef && /^[A-Z0-9]{5,7}$/.test(storedRef)) {
+            const { data: userData } = await supabase.auth.getUser();
+            const existingRef = userData.user?.user_metadata?.referred_by_code;
+            if (!existingRef) {
+              await supabase.auth.updateUser({ data: { referred_by_code: storedRef } });
+            }
+            localStorage.removeItem("cashopt_ref");
+          }
+        } catch {}
+
+        router.replace("/dashboard");
+        return;
+      }
+
+      // Cas 2 : Email confirmation → tokens dans le hash de l'URL
       const hash = window.location.hash.substring(1);
       const params = new URLSearchParams(hash);
       const accessToken = params.get("access_token");
@@ -27,18 +53,17 @@ export default function AuthCallbackPage() {
           access_token: accessToken,
           refresh_token: refreshToken,
         });
-
         if (error) {
+          console.error("[auth/callback] setSession error:", error);
           router.replace("/login?error=callback");
           return;
         }
-
-        // Session créée, on entre direct dans l'app
         router.replace("/dashboard");
-      } else {
-        // Pas de token → l'utilisateur a peut-être cliqué un lien expiré
-        router.replace("/login");
+        return;
       }
+
+      // Aucun code ni token → lien expiré ou accès direct
+      router.replace("/login");
     }
 
     handleCallback();
@@ -66,6 +91,7 @@ export default function AuthCallbackPage() {
           alignItems: "center",
           justifyContent: "center",
           fontSize: 26,
+          color: "white",
         }}
       >
         ⚡
