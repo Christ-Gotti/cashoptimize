@@ -29,19 +29,28 @@ export type DodoCheckoutParams = {
   successUrl: string;
   cancelUrl: string;
   metadata?: Record<string, string>;
+  discountCode?: string; // 🎁 code coupon parrainage (REF10, REF20, etc.)
 };
 
-export async function createCheckoutSession(params: DodoCheckoutParams): Promise<{ id: string; url: string }> {
+export async function createCheckoutSession(
+  params: DodoCheckoutParams
+): Promise<{ id: string; url: string }> {
+  const body: Record<string, unknown> = {
+    product_id: params.productId,
+    customer: { email: params.customerEmail, name: params.customerName },
+    success_url: params.successUrl,
+    cancel_url: params.cancelUrl,
+    metadata: params.metadata ?? {},
+  };
+
+  if (params.discountCode) {
+    body.discount_code = params.discountCode;
+  }
+
   const res = await fetch(`${DODO_BASE}/v1/checkout/sessions`, {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({
-      product_id: params.productId,
-      customer: { email: params.customerEmail, name: params.customerName },
-      success_url: params.successUrl,
-      cancel_url: params.cancelUrl,
-      metadata: params.metadata ?? {},
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const t = await res.text();
@@ -54,15 +63,21 @@ export async function createCheckoutSession(params: DodoCheckoutParams): Promise
 // SUBSCRIPTION MANAGEMENT
 // ============================================================
 export async function cancelSubscription(subscriptionId: string) {
-  const res = await fetch(`${DODO_BASE}/v1/subscriptions/${subscriptionId}/cancel`, {
-    method: "POST",
-    headers: headers(),
-  });
+  const res = await fetch(
+    `${DODO_BASE}/v1/subscriptions/${subscriptionId}/cancel`,
+    {
+      method: "POST",
+      headers: headers(),
+    }
+  );
   if (!res.ok) throw new Error(`Dodo cancel failed: ${res.status}`);
   return (await res.json()) as { status: string };
 }
 
-export async function createCustomerPortalLink(customerId: string, returnUrl: string) {
+export async function createCustomerPortalLink(
+  customerId: string,
+  returnUrl: string
+) {
   const res = await fetch(`${DODO_BASE}/v1/customers/${customerId}/portal`, {
     method: "POST",
     headers: headers(),
@@ -75,7 +90,11 @@ export async function createCustomerPortalLink(customerId: string, returnUrl: st
 // ============================================================
 // WEBHOOK SIGNATURE VERIFICATION
 // ============================================================
-export function verifyDodoSignature(payload: string, signature: string, secret: string): boolean {
+export function verifyDodoSignature(
+  payload: string,
+  signature: string,
+  secret: string
+): boolean {
   const hmac = crypto.createHmac("sha256", secret);
   const expected = hmac.update(payload).digest("hex");
   const a = Buffer.from(expected);
@@ -92,7 +111,9 @@ export function verifyDodoSignature(payload: string, signature: string, secret: 
  * Pour grille modulaire complexe, il faudrait passer côté line items.
  * Ici on mappe 1 product_id = 1 plan de base, les add-ons sont ajoutés séparément.
  */
-export function resolvePlanFromProductId(productId: string): "starter" | "pro" | "business" | null {
+export function resolvePlanFromProductId(
+  productId: string
+): "starter" | "pro" | "business" | null {
   if (productId === process.env.DODO_PRODUCT_ID_STARTER) return "starter";
   if (productId === process.env.DODO_PRODUCT_ID_PRO) return "pro";
   if (productId === process.env.DODO_PRODUCT_ID_BUSINESS) return "business";
