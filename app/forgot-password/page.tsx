@@ -10,13 +10,8 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<{ tone: "info" | "success" | "warning"; text: string } | null>(null);
 
-  /**
-   * Traduit les messages Supabase en français, sans jamais révéler
-   * si l'email existe ou non (best practice sécurité).
-   */
   function friendlyMessage(err: string): { tone: "warning" | "info"; text: string } {
     const msg = err.toLowerCase();
-
     if (msg.includes("email rate limit") || msg.includes("rate limit")) {
       return {
         tone: "info",
@@ -41,45 +36,26 @@ export default function ForgotPasswordPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email) return;
-
     setLoading(true);
     setNotice(null);
-
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
-
     setLoading(false);
-
     if (error) {
       setNotice(friendlyMessage(error.message));
       return;
     }
-
-    // Toujours afficher un message de succès générique (sécurité)
     setNotice({
       tone: "success",
       text: "Si un compte est associé à cette adresse, un lien de réinitialisation vient d'être envoyé. Vérifie ta boîte mail (et tes spams).",
     });
   }
 
-  // Palette douce : jamais de rouge pour ce genre d'écran
   const toneStyles = {
-    info: {
-      background: "#eff6ff",
-      borderColor: "#bfdbfe",
-      color: "#1e3a8a",
-    },
-    success: {
-      background: "#ecfdf5",
-      borderColor: "#a7f3d0",
-      color: "#065f46",
-    },
-    warning: {
-      background: "#fffbeb",
-      borderColor: "#fde68a",
-      color: "#78350f",
-    },
+    info: { background: "#eff6ff", borderColor: "#bfdbfe", color: "#1e3a8a" },
+    success: { background: "#ecfdf5", borderColor: "#a7f3d0", color: "#065f46" },
+    warning: { background: "#fffbeb", borderColor: "#fde68a", color: "#78350f" },
   };
 
   return (
@@ -233,11 +209,8 @@ export default function ForgotPasswordPage() {
           </Link>
         </div>
 
-        <p style={{ textAlign: "center", color: "#94a3b8", fontSize: "12px", marginTop: "20px", marginBottom: 0 }}>
-          Besoin d'aide ? Écris-nous à{" "}
-          <a href="mailto:dopeweb.saas@gmail.com" style={{ color: "#6366f1", textDecoration: "none" }}>
-            dopeweb.saas@gmail.com
-          </a>
+        <p style={{ textAlign: "center", color: "#94a3b8", fontSize: 12, marginTop: "20px", marginBottom: 0 }}>
+          Besoin d'aide ? <a href="mailto:dopeweb.saas@gmail.com?subject=Aide%20CashOptimize" style={{ color: "#6366f1", textDecoration: "none", fontWeight: 600 }}>Contactez-nous</a>
         </p>
       </div>
     </div>
